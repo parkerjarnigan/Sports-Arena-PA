@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Barlow Condensed", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-cardinal: #862633;
+  --color-grey: #9EA2A2;
+  --color-gold: #FFCD00;
+  --color-anthracite: #1D252D;
+}
+
+@layer base {
+  html {
+    background-color: #9EA2A2;
+    color: #1D252D;
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background-color: #9EA2A2;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Custom subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #9EA2A2;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #6E7373;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #1D252D;
+  }
+}
+
+/* Tactile pad press feel */
+.sound-pad-surface {
+  transition: transform 90ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sound-pad-surface:active {
+  transform: translateY(2px) scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sound-pad-surface {
+    transition: none;
+  }
+  .sound-pad-surface:active {
+    transform: none;
+  }
+}

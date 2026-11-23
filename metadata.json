@@ -1,0 +1,6 @@
+{
+  "name": "Courtboard PA",
+  "description": "Live high school basketball PA soundboard with zero-latency Web Audio playback, keyboard shortcuts, drag-and-drop pad layout, and Firebase cloud sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

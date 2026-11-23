@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidCategory(data, docId) {
+      return data.keys().hasAll(['id', 'name', 'order', 'boardId'])
+        && data.keys().hasOnly(['id', 'name', 'order', 'boardId', 'updatedAt'])
+        && data.id == docId
+        && isValidId(data.id)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 40
+        && data.order is number && data.order >= 0 && data.order <= 10000
+        && data.boardId == 'default'
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    function isValidSound(data, docId) {
+      return data.keys().hasAll(['id', 'title', 'categoryId', 'order', 'color', 'shortcut', 'playbackMode', 'boardId'])
+        && data.keys().hasOnly(['id', 'title', 'categoryId', 'order', 'color', 'shortcut', 'playbackMode', 'audioUrl', 'storagePath', 'synthPreset', 'clipStartSec', 'clipEndSec', 'boardId', 'updatedAt'])
+        && data.id == docId
+        && isValidId(data.id)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 60
+        && isValidId(data.categoryId)
+        && data.order is number && data.order >= 0 && data.order <= 100000
+        && data.color is string && data.color.size() == 7 && data.color.matches('^#[0-9a-fA-F]{6}$')
+        && data.shortcut is string && data.shortcut.size() <= 16
+        && (data.playbackMode == 'retrigger' || data.playbackMode == 'toggle' || data.playbackMode == 'gate')
+        && (!('audioUrl' in data) || (data.audioUrl is string && data.audioUrl.size() <= 2048))
+        && (!('storagePath' in data) || (data.storagePath is string && data.storagePath.size() <= 256))
+        && (!('synthPreset' in data) || (data.synthPreset is string && data.synthPreset.size() <= 40))
+        && (!('clipStartSec' in data) || (data.clipStartSec is number && data.clipStartSec >= 0 && data.clipStartSec <= 36000))
+        && (!('clipEndSec' in data) || (data.clipEndSec is number && data.clipEndSec >= 0 && data.clipEndSec <= 36000))
+        && (!('clipEndSec' in data) || data.clipEndSec == 0 || !('clipStartSec' in data) || data.clipEndSec > data.clipStartSec)
+        && data.boardId == 'default'
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    // Connection validation probe
+    match /test/{docId} {
+      allow get: if docId == 'connection';
+    }
+
+    // Categories collection
+    match /categories/{categoryId} {
+      allow get: if isValidId(categoryId) && existing().boardId == 'default';
+      allow list: if resource.data.boardId == 'default';
+      allow create: if isValidId(categoryId) && isValidCategory(incoming(), categoryId);
+      allow update: if isValidId(categoryId)
+        && isValidCategory(incoming(), categoryId)
+        && incoming().id == existing().id
+        && incoming().boardId == existing().boardId
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'order', 'updatedAt']);
+      allow delete: if isValidId(categoryId) && existing().boardId == 'default';
+    }
+
+    // Sounds collection
+    match /sounds/{soundId} {
+      allow get: if isValidId(soundId) && existing().boardId == 'default';
+      allow list: if resource.data.boardId == 'default';
+      allow create: if isValidId(soundId)
+        && isValidSound(incoming(), soundId)
+        && existsAfter(/databases/$(database)/documents/categories/$(incoming().categoryId));
+      allow update: if isValidId(soundId)
+        && isValidSound(incoming(), soundId)
+        && incoming().id == existing().id
+        && incoming().boardId == existing().boardId
+        && existsAfter(/databases/$(database)/documents/categories/$(incoming().categoryId))
+        && (
+          // Action 1: Drag-and-drop reorder / move across categories
+          incoming().diff(existing()).affectedKeys().hasOnly(['order', 'categoryId', 'updatedAt'])
+          ||
+          // Action 2: Admin property edit
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'categoryId', 'order', 'color', 'shortcut', 'playbackMode', 'audioUrl', 'storagePath', 'synthPreset', 'clipStartSec', 'clipEndSec', 'updatedAt'])
+        );
+      allow delete: if isValidId(soundId) && existing().boardId == 'default';
+    }
+  }
+}
